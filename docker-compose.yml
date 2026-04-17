@@ -13,29 +13,29 @@ services:
         condition: service_healthy
     environment:
       # ── Database ─────────────────────────────────
-      DB_HOST:     db          # 'db' = service name below, don't change
-      DB_PORT:     3306
-      DB_NAME:     videoqueue
-      DB_USER:     vquser
-      DB_PASS:     changeme    # ← change this
+      - DB_HOST=db          # 'db' = service name below, don't change
+      - DB_PORT=3306
+      - DB_NAME=videoqueue
+      - DB_USER=vquser
+      - DB_PASS=changeme    # ← change this
 
       # ── Admin fallback password ───────────────────
       # Used for login when no admin users exist in the database yet.
       # Once you add users via the admin panel this is only a backup.
-      ADMIN_PASSWORD: changeme # ← change this
+      - ADMIN_PASSWORD=changeme # ← change this
 
       # ── YouTube Data API key (optional) ──────────
       # Enables keyword search on the user page.
       # Get a free key: https://console.cloud.google.com → YouTube Data API v3
       # Leave empty to disable search (URL/ID paste still works).
-      YT_API_KEY: ""
+      - YT_API_KEY=""
 
       # ── Queue rules ───────────────────────────────
-      MAX_PER_IP:       3      # max videos one IP can queue at once
-      COOLDOWN_SECONDS: 1800   # seconds before same video can be re-queued (0 = off)
+      - MAX_PER_IP=3      # max videos one IP can queue at once
+      - COOLDOWN_SECONDS=1800   # seconds before same video can be re-queued (0 = off)
 
       # ── CORS ─────────────────────────────────────
-      ALLOWED_ORIGIN: ""       # leave empty to allow all, or set to your domain
+      - ALLOWED_ORIGIN=""       # leave empty to allow all, or set to your domain
 
   # ── MySQL database ──────────────────────────────
   db:

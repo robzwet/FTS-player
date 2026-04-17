@@ -1,0 +1,60 @@
+services:
+
+  # ── PHP / Apache app ────────────────────────────
+  app:
+    build: .
+    image: robzwet/fts-player:latest
+    container_name: fts_player_app
+    restart: unless-stopped
+    ports:
+      - "80:80"               # change to "8080:80" if port 80 is in use
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # ── Database ─────────────────────────────────
+      DB_HOST:     db          # 'db' = service name below, don't change
+      DB_PORT:     3306
+      DB_NAME:     videoqueue
+      DB_USER:     vquser
+      DB_PASS:     changeme    # ← change this
+
+      # ── Admin fallback password ───────────────────
+      # Used for login when no admin users exist in the database yet.
+      # Once you add users via the admin panel this is only a backup.
+      ADMIN_PASSWORD: changeme # ← change this
+
+      # ── YouTube Data API key (optional) ──────────
+      # Enables keyword search on the user page.
+      # Get a free key: https://console.cloud.google.com → YouTube Data API v3
+      # Leave empty to disable search (URL/ID paste still works).
+      YT_API_KEY: ""
+
+      # ── Queue rules ───────────────────────────────
+      MAX_PER_IP:       3      # max videos one IP can queue at once
+      COOLDOWN_SECONDS: 1800   # seconds before same video can be re-queued (0 = off)
+
+      # ── CORS ─────────────────────────────────────
+      ALLOWED_ORIGIN: ""       # leave empty to allow all, or set to your domain
+
+  # ── MySQL database ──────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: fts_player_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE:       videoqueue
+      MYSQL_USER:           vquser
+      MYSQL_PASSWORD:       changeme      # ← must match DB_PASS above
+      MYSQL_ROOT_PASSWORD:  changeme_root # ← change this
+    volumes:
+      - db_data:/var/lib/mysql            # data survives container restarts
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  db_data:

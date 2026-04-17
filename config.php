@@ -1,34 +1,33 @@
 <?php
 // ═══════════════════════════════════════════════
 //  VIDEO QUEUE — CONFIG
+//  Values are read from environment variables.
+//  When running with Docker, set these in docker-compose.yml.
+//  When running without Docker, edit the default values here.
 // ═══════════════════════════════════════════════
 
-// ── Database ────────────────────────────────────
-define('DB_HOST', 'localhost');
-define('DB_PORT', 3306);
-define('DB_NAME', 'videoqueue');   // database name you created
-define('DB_USER', 'vquser');       // database username
-define('DB_PASS', 'changeme');     // database password
+function env(string $key, string $default = ''): string {
+    $val = getenv($key);
+    return ($val !== false && $val !== '') ? $val : $default;
+}
+
+// ── Database ─────────────────────────────────────
+define('DB_HOST',    env('DB_HOST',    'db'));          // 'db' = docker-compose service name
+define('DB_PORT',    (int)env('DB_PORT', '3306'));
+define('DB_NAME',    env('DB_NAME',    'videoqueue'));
+define('DB_USER',    env('DB_USER',    'vquser'));
+define('DB_PASS',    env('DB_PASS',    'changeme'));
 define('DB_CHARSET', 'utf8mb4');
 
-// ── Admin ────────────────────────────────────────
-// Password to access admin.html
-define('ADMIN_PASSWORD', 'changeme');
+// ── Admin ─────────────────────────────────────────
+define('ADMIN_PASSWORD', env('ADMIN_PASSWORD', 'changeme'));
 
-// ── YouTube Data API v3 key ──────────────────────
-// Enables keyword search on the user page.
-// Get a free key at https://console.cloud.google.com
-// Leave empty to disable keyword search (URL/ID paste still works).
-define('YT_API_KEY', '');
+// ── YouTube Data API v3 key ───────────────────────
+define('YT_API_KEY', env('YT_API_KEY', ''));
 
-// ── Queue rules ──────────────────────────────────
-// How many videos one IP can have in the active queue at once.
-define('MAX_PER_IP', 3);
+// ── Queue rules ───────────────────────────────────
+define('MAX_PER_IP',       (int)env('MAX_PER_IP',       '3'));
+define('COOLDOWN_SECONDS', (int)env('COOLDOWN_SECONDS', '1800'));
 
-// Minimum seconds before the same video ID can be queued again.
-// 0 = no restriction.
-define('COOLDOWN_SECONDS', 1800);  // 30 minutes
-
-// ── CORS ─────────────────────────────────────────
-// Leave empty to allow all origins, or set to your domain.
-define('ALLOWED_ORIGIN', '');
+// ── CORS ──────────────────────────────────────────
+define('ALLOWED_ORIGIN', env('ALLOWED_ORIGIN', ''));

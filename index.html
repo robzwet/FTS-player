@@ -374,7 +374,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'api.php';
+const API = window.location.pathname.replace(/[^\/]*$/, '') + 'api.php';
 let addedThisSession = new Set();
 let knownQueueIds    = new Set();
 

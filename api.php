@@ -1,21 +1,29 @@
 <?php
 // ═══════════════════════════════════════════════
-//  VIDEO QUEUE — API  (MariaDB edition)
+//  VIDEO QUEUE — API
 //
-//  GET  ?action=state          → queue + ticker + recent history
-//  GET  ?action=search&q=…     → YouTube keyword search (proxied)
-//  GET  ?action=oembed&id=…    → single video metadata
-//  GET  ?action=history        → full play history
-//  GET  ?action=stats          → queue stats
+//  GET  ?action=state            → queue + ticker + recent history
+//  GET  ?action=search&q=…       → YouTube keyword search (proxied)
+//  GET  ?action=oembed&id=…      → single video metadata
+//  GET  ?action=history          → full play history
+//  GET  ?action=stats            → queue stats
+//  GET  ?action=command          → projector polls this for pending command
 //
-//  POST {action:"add"}         → add video (user)
-//  POST {action:"played"}      → mark played (projector)
-//  POST {action:"remove"}      → remove from queue  [admin]
-//  POST {action:"reorder"}     → move item          [admin]
-//  POST {action:"ticker"}      → set ticker message [admin]
-//  POST {action:"clear"}       → clear queue        [admin]
-//  POST {action:"clear_history"} → clear history    [admin]
-//  POST {action:"login"}       → verify admin pass
+//  POST {action:"add"}           → add video (user)
+//  POST {action:"played"}        → mark played (projector)
+//  POST {action:"cmd_ack"}       → projector acknowledges command
+//
+//  POST {action:"remove"}        → remove from queue       [admin]
+//  POST {action:"reorder"}       → move item up/down       [admin]
+//  POST {action:"ticker"}        → set ticker message      [admin]
+//  POST {action:"clear"}         → clear queue             [admin]
+//  POST {action:"clear_history"} → clear history           [admin]
+//  POST {action:"command"}       → send projector command  [admin]
+//
+//  POST {action:"login"}         → verify admin credentials
+//  POST {action:"add_admin"}     → create admin user       [admin]
+//  POST {action:"remove_admin"}  → delete admin user       [admin]
+//  GET  ?action=list_admins      → list admin users        [admin]
 // ═══════════════════════════════════════════════
 
 require_once __DIR__ . '/config.php';
@@ -29,7 +37,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
-// ── DB connection (lazy singleton) ───────────────
+// ── DB connection ────────────────────────────────
 function db(): PDO {
     static $pdo = null;
     if ($pdo) return $pdo;
@@ -59,7 +67,7 @@ function fail(string $msg, int $code = 400): void {
     exit;
 }
 
-// ── Input sanitisation ───────────────────────────
+// ── Sanitisation ─────────────────────────────────
 function sanitizeId(string $raw): string {
     return preg_replace('/[^a-zA-Z0-9_-]/', '', substr($raw, 0, 11));
 }
@@ -67,13 +75,12 @@ function sanitizeId(string $raw): string {
 function sanitizeVideo(array $v): array {
     return [
         'video_id' => sanitizeId($v['id'] ?? ''),
-        'title'    => mb_substr(strip_tags($v['title']   ?? 'Untitled'), 0, 200),
-        'channel'  => mb_substr(strip_tags($v['channel'] ?? ''),         0, 100),
-        'duration' => mb_substr(strip_tags($v['duration']?? ''),         0, 20),
+        'title'    => mb_substr(strip_tags($v['title']    ?? 'Untitled'), 0, 200),
+        'channel'  => mb_substr(strip_tags($v['channel']  ?? ''),         0, 100),
+        'duration' => mb_substr(strip_tags($v['duration'] ?? ''),         0, 20),
     ];
 }
 
-// Hash the submitter IP so we never store raw IPs
 function submitterHash(): string {
     $ip = $_SERVER['HTTP_X_FORWARDED_FOR']
        ?? $_SERVER['HTTP_X_REAL_IP']
@@ -84,14 +91,36 @@ function submitterHash(): string {
 }
 
 // ── Admin auth ───────────────────────────────────
-function requireAdmin(array $body): void {
-    $pass = $body['password'] ?? ($_SERVER['HTTP_X_ADMIN_PASSWORD'] ?? '');
-    if ($pass !== ADMIN_PASSWORD) fail('Unauthorized', 403);
+// Supports both the legacy single ADMIN_PASSWORD from config and DB users.
+// Returns the username on success, calls fail() on failure.
+function requireAdmin(array $body): string {
+    $username = trim($body['username'] ?? '');
+    $password = $body['password'] ?? '';
+
+    // Legacy single-password mode (no username supplied or no users in DB yet)
+    if ($username === '' || $username === 'admin') {
+        // Check DB users table first
+        try {
+            $stmt = db()->prepare("SELECT username, password_hash FROM admins WHERE username = 'admin' LIMIT 1");
+            $stmt->execute();
+            $row = $stmt->fetch();
+            if ($row && password_verify($password, $row['password_hash'])) return 'admin';
+        } catch (PDOException $e) {}
+
+        // Fall back to config password
+        if ($password === ADMIN_PASSWORD) return 'admin';
+        fail('Unauthorized', 403);
+    }
+
+    // Named user from DB
+    $stmt = db()->prepare("SELECT username, password_hash FROM admins WHERE username = ? LIMIT 1");
+    $stmt->execute([$username]);
+    $row = $stmt->fetch();
+    if (!$row || !password_verify($password, $row['password_hash'])) fail('Unauthorized', 403);
+    return $row['username'];
 }
 
-// ── Queue helpers ────────────────────────────────
-
-// Returns full state array for frontend
+// ── Queue state ──────────────────────────────────
 function getState(): array {
     $db = db();
 
@@ -111,14 +140,32 @@ function getState(): array {
     return ['queue' => $queue, 'played' => $played, 'ticker' => $ticker];
 }
 
-// Recalculate position field after any insert/delete/reorder
 function reindex(): void {
     $db = db();
     $rows = $db->query("SELECT id FROM queue ORDER BY position ASC, id ASC")->fetchAll();
     $stmt = $db->prepare("UPDATE queue SET position = ? WHERE id = ?");
-    foreach ($rows as $i => $row) {
-        $stmt->execute([$i, $row['id']]);
-    }
+    foreach ($rows as $i => $row) $stmt->execute([$i, $row['id']]);
+}
+
+// ── Projector command helpers ────────────────────
+// Commands are stored in the settings table as JSON under key 'projector_command'.
+// Projector polls every 2s, ACKs when done. Simple and requires no extra table.
+function setCommand(string $cmd, mixed $value = null): void {
+    $payload = json_encode(['cmd' => $cmd, 'value' => $value, 'ts' => time(), 'ack' => false]);
+    db()->prepare(
+        "INSERT INTO settings (`key`, value) VALUES ('projector_command', ?)
+         ON DUPLICATE KEY UPDATE value = VALUES(value)"
+    )->execute([$payload]);
+}
+
+function getCommand(): ?array {
+    $raw = db()->query(
+        "SELECT value FROM settings WHERE `key` = 'projector_command'"
+    )->fetchColumn();
+    if (!$raw) return null;
+    $cmd = json_decode($raw, true);
+    if (!$cmd || ($cmd['ack'] ?? true)) return null; // already acked
+    return $cmd;
 }
 
 // ── YouTube helpers ──────────────────────────────
@@ -133,7 +180,9 @@ function ytSearch(string $q): array {
     $search = json_decode($searchRaw, true);
     if (!empty($search['error'])) fail($search['error']['message'] ?? 'YouTube API error');
 
-    $ids = implode(',', array_column(array_map(fn($i) => $i['id'], $search['items'] ?? []), 'videoId'));
+    $ids = implode(',', array_column(
+        array_map(fn($i) => $i['id'], $search['items'] ?? []), 'videoId'
+    ));
     if (!$ids) return [];
 
     $detailRaw = @file_get_contents(
@@ -188,26 +237,22 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     $action = $_GET['action'] ?? 'state';
 
-    // Full queue state
     if ($action === 'state') {
         ok(getState());
     }
 
-    // YouTube keyword search
     if ($action === 'search') {
         $q = trim($_GET['q'] ?? '');
         if (!$q) fail('Missing query parameter');
         ok(ytSearch($q));
     }
 
-    // Single video metadata via oEmbed
     if ($action === 'oembed') {
         $id = sanitizeId($_GET['id'] ?? '');
         if (!$id) fail('Missing or invalid video id');
         ok(ytOembed($id));
     }
 
-    // Full play history (for admin)
     if ($action === 'history') {
         $limit = min((int)($_GET['limit'] ?? 100), 500);
         $rows = db()->query(
@@ -217,20 +262,36 @@ if ($method === 'GET') {
         ok($rows);
     }
 
-    // Queue statistics (for admin dashboard)
     if ($action === 'stats') {
-        $db    = db();
-        $stats = [
-            'queue_length'   => (int)$db->query("SELECT COUNT(*) FROM queue")->fetchColumn(),
-            'total_played'   => (int)$db->query("SELECT COUNT(*) FROM history")->fetchColumn(),
-            'played_today'   => (int)$db->query("SELECT COUNT(*) FROM history WHERE DATE(played_at) = CURDATE()")->fetchColumn(),
-            'unique_videos'  => (int)$db->query("SELECT COUNT(DISTINCT video_id) FROM history")->fetchColumn(),
-            'top_videos'     => $db->query(
+        $db = db();
+        ok([
+            'queue_length'  => (int)$db->query("SELECT COUNT(*) FROM queue")->fetchColumn(),
+            'total_played'  => (int)$db->query("SELECT COUNT(*) FROM history")->fetchColumn(),
+            'played_today'  => (int)$db->query("SELECT COUNT(*) FROM history WHERE DATE(played_at) = CURDATE()")->fetchColumn(),
+            'unique_videos' => (int)$db->query("SELECT COUNT(DISTINCT video_id) FROM history")->fetchColumn(),
+            'top_videos'    => $db->query(
                 "SELECT video_id AS id, title, COUNT(*) AS times_played
                  FROM history GROUP BY video_id, title ORDER BY times_played DESC LIMIT 5"
             )->fetchAll(),
-        ];
-        ok($stats);
+        ]);
+    }
+
+    // Projector polls this for pending commands
+    if ($action === 'command') {
+        ok(getCommand());
+    }
+
+    // List admin users [admin]
+    if ($action === 'list_admins') {
+        $body = [];
+        parse_str(file_get_contents('php://input') ?? '', $body);
+        // For GET we read from query string
+        $body = ['username' => $_GET['username'] ?? '', 'password' => $_GET['password'] ?? ''];
+        requireAdmin($body);
+        $rows = db()->query(
+            "SELECT username, created_at FROM admins ORDER BY created_at ASC"
+        )->fetchAll();
+        ok($rows);
     }
 
     fail('Unknown action');
@@ -249,16 +310,13 @@ if ($method === 'POST') {
 
         $submitter = submitterHash();
 
-        // Duplicate check — already in queue?
         $exists = $db->prepare("SELECT id FROM queue WHERE video_id = ?");
         $exists->execute([$v['video_id']]);
         if ($exists->fetch()) fail('This video is already in the queue');
 
-        // Cooldown check — was this video played recently?
         if (COOLDOWN_SECONDS > 0) {
             $cooldown = $db->prepare(
-                "SELECT played_at FROM history WHERE video_id = ?
-                 ORDER BY played_at DESC LIMIT 1"
+                "SELECT played_at FROM history WHERE video_id = ? ORDER BY played_at DESC LIMIT 1"
             );
             $cooldown->execute([$v['video_id']]);
             $last = $cooldown->fetchColumn();
@@ -271,7 +329,6 @@ if ($method === 'POST') {
             }
         }
 
-        // Per-IP queue limit
         if (MAX_PER_IP > 0) {
             $ipCount = $db->prepare("SELECT COUNT(*) FROM queue WHERE added_by = ?");
             $ipCount->execute([$submitter]);
@@ -280,14 +337,11 @@ if ($method === 'POST') {
             }
         }
 
-        // Get next position
         $maxPos = (int)$db->query("SELECT COALESCE(MAX(position), -1) FROM queue")->fetchColumn();
-
-        $stmt = $db->prepare(
+        $db->prepare(
             "INSERT INTO queue (video_id, title, channel, duration, added_by, position)
              VALUES (:video_id, :title, :channel, :duration, :added_by, :position)"
-        );
-        $stmt->execute([
+        )->execute([
             ':video_id' => $v['video_id'],
             ':title'    => $v['title'],
             ':channel'  => $v['channel'],
@@ -306,7 +360,6 @@ if ($method === 'POST') {
 
         $db->beginTransaction();
         try {
-            // Copy to history
             $row = $db->prepare("SELECT * FROM queue WHERE video_id = ? LIMIT 1");
             $row->execute([$id]);
             $v = $row->fetch();
@@ -316,22 +369,32 @@ if ($method === 'POST') {
                     "INSERT INTO history (video_id, title, channel, duration, added_by, added_at)
                      VALUES (?, ?, ?, ?, ?, ?)"
                 )->execute([$v['video_id'], $v['title'], $v['channel'], $v['duration'], $v['added_by'], $v['added_at']]);
-
-                // Remove from queue
                 $db->prepare("DELETE FROM queue WHERE video_id = ?")->execute([$id]);
                 reindex();
             }
-
             $db->commit();
         } catch (PDOException $e) {
             $db->rollBack();
             fail('Database error: ' . $e->getMessage(), 500);
         }
-
         ok(getState());
     }
 
-    // ── Remove from queue (admin) ─────────────────
+    // ── Projector acknowledges command ───────────
+    if ($action === 'cmd_ack') {
+        $raw = $db->query("SELECT value FROM settings WHERE `key` = 'projector_command'")->fetchColumn();
+        if ($raw) {
+            $cmd = json_decode($raw, true);
+            if ($cmd) {
+                $cmd['ack'] = true;
+                $db->prepare("UPDATE settings SET value = ? WHERE `key` = 'projector_command'"
+                )->execute([json_encode($cmd)]);
+            }
+        }
+        ok(null);
+    }
+
+    // ── Remove (admin) ───────────────────────────
     if ($action === 'remove') {
         requireAdmin($body);
         $id = sanitizeId($body['id'] ?? '');
@@ -341,17 +404,16 @@ if ($method === 'POST') {
         ok(getState());
     }
 
-    // ── Reorder queue (admin) ─────────────────────
+    // ── Reorder (admin) ──────────────────────────
     if ($action === 'reorder') {
         requireAdmin($body);
         $from = (int)($body['from'] ?? -1);
         $to   = (int)($body['to']   ?? -1);
 
-        $rows = $db->query("SELECT id FROM queue ORDER BY position ASC, id ASC")->fetchAll();
+        $rows  = $db->query("SELECT id FROM queue ORDER BY position ASC, id ASC")->fetchAll();
         $count = count($rows);
         if ($from < 0 || $to < 0 || $from >= $count || $to >= $count) fail('Invalid indices');
 
-        // Splice
         $ids   = array_column($rows, 'id');
         $moved = array_splice($ids, $from, 1);
         array_splice($ids, $to, 0, $moved);
@@ -362,7 +424,7 @@ if ($method === 'POST') {
         ok(getState());
     }
 
-    // ── Update ticker (admin) ─────────────────────
+    // ── Ticker (admin) ───────────────────────────
     if ($action === 'ticker') {
         requireAdmin($body);
         $msg = mb_substr(strip_tags($body['message'] ?? ''), 0, 500);
@@ -373,25 +435,66 @@ if ($method === 'POST') {
         ok(getState());
     }
 
-    // ── Clear queue (admin) ───────────────────────
+    // ── Clear queue (admin) ──────────────────────
     if ($action === 'clear') {
         requireAdmin($body);
         $db->exec("DELETE FROM queue");
         ok(getState());
     }
 
-    // ── Clear history (admin) ─────────────────────
+    // ── Clear history (admin) ────────────────────
     if ($action === 'clear_history') {
         requireAdmin($body);
         $db->exec("DELETE FROM history");
         ok(getState());
     }
 
-    // ── Admin login check ─────────────────────────
+    // ── Send projector command (admin) ───────────
+    if ($action === 'command') {
+        requireAdmin($body);
+        $cmd = mb_substr(strip_tags($body['cmd'] ?? ''), 0, 30);
+        $val = $body['value'] ?? null;
+        if (!in_array($cmd, ['play', 'pause', 'next', 'volume', 'mute', 'unmute'])) {
+            fail('Unknown command');
+        }
+        setCommand($cmd, $val);
+        ok(null);
+    }
+
+    // ── Login check ──────────────────────────────
     if ($action === 'login') {
-        $pass = $body['password'] ?? '';
-        if ($pass === ADMIN_PASSWORD) ok(['authenticated' => true]);
-        else fail('Wrong password', 403);
+        $username = requireAdmin($body);
+        ok(['authenticated' => true, 'username' => $username]);
+    }
+
+    // ── Add admin user ───────────────────────────
+    if ($action === 'add_admin') {
+        requireAdmin($body); // must be authenticated to add users
+        $newUser = mb_substr(preg_replace('/[^a-zA-Z0-9_\-]/', '', $body['new_username'] ?? ''), 0, 40);
+        $newPass = $body['new_password'] ?? '';
+        if (strlen($newUser) < 2) fail('Username too short (min 2 characters)');
+        if (strlen($newPass) < 6) fail('Password too short (min 6 characters)');
+
+        $exists = $db->prepare("SELECT id FROM admins WHERE username = ?");
+        $exists->execute([$newUser]);
+        if ($exists->fetch()) fail('Username already exists');
+
+        $db->prepare("INSERT INTO admins (username, password_hash) VALUES (?, ?)")
+           ->execute([$newUser, password_hash($newPass, PASSWORD_BCRYPT)]);
+
+        $rows = $db->query("SELECT username, created_at FROM admins ORDER BY created_at ASC")->fetchAll();
+        ok($rows);
+    }
+
+    // ── Remove admin user ────────────────────────
+    if ($action === 'remove_admin') {
+        $caller = requireAdmin($body);
+        $target = $body['target_username'] ?? '';
+        if ($target === $caller) fail('You cannot delete your own account');
+        if ($target === '') fail('Missing target_username');
+        $db->prepare("DELETE FROM admins WHERE username = ?")->execute([$target]);
+        $rows = $db->query("SELECT username, created_at FROM admins ORDER BY created_at ASC")->fetchAll();
+        ok($rows);
     }
 
     fail('Unknown action');

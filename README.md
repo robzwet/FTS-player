@@ -1,135 +1,132 @@
-# Video Queue — Setup Guide (MariaDB edition)
+# FTS Player — Video Queue
 
-## Files
-```
-config.php       ← Your settings: DB credentials, password, API key
-setup.php        ← Run once in browser to create DB tables
-api.php          ← Backend API — all data goes through here
-index.html       ← User page (search & add videos) — QR code target
-projector.html   ← Fullscreen display for the projector
-admin.html       ← Password-protected admin panel
-```
+A live YouTube queue system for projector screens. Users scan a QR code, search for a video, and it plays automatically on the big screen.
 
 ---
 
-## Requirements
-- PHP 7.4+ (8.0+ recommended)
-- MariaDB 10.3+ (or MySQL 5.7+)
-- PHP extensions: `pdo_mysql` (enabled by default on most hosts)
+## Quick Start with Docker
+
+### 1. Edit `docker-compose.yml`
+
+Change every value marked `← change this`:
+
+```yaml
+DB_PASS:            your-db-password
+MYSQL_PASSWORD:     your-db-password    # must match DB_PASS
+MYSQL_ROOT_PASSWORD: something-secure
+ADMIN_PASSWORD:     your-admin-password
+```
+
+Optionally add a YouTube API key to enable keyword search:
+```yaml
+YT_API_KEY: "AIzaSy..."
+```
+
+### 2. Start
+
+```bash
+docker compose up -d
+```
+
+Docker will:
+- Build the PHP/Apache app container
+- Start MySQL
+- Wait for MySQL to be healthy
+- Automatically create all database tables
+- Start Apache
+
+### 3. Open the pages
+
+| Page | URL | Who |
+|------|-----|-----|
+| User page | `http://yourserver/index.html` | Audience — scan QR to add videos |
+| Projector | `http://yourserver/projector.html` | Open fullscreen (F11) on the projector |
+| Admin | `http://yourserver/admin.html` | You |
+
+> **No need to run `setup.php`** when using Docker — the database is initialised automatically at container start.
 
 ---
 
-## Step-by-step Setup
+## Common commands
 
-### 1. Create a database and user
-
-Log into your MariaDB/MySQL server and run:
-
-```sql
-CREATE DATABASE videoqueue CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'vquser'@'localhost' IDENTIFIED BY 'a-strong-password';
-GRANT ALL PRIVILEGES ON videoqueue.* TO 'vquser'@'localhost';
-FLUSH PRIVILEGES;
+```bash
+docker compose up -d          # start in background
+docker compose down           # stop (data preserved)
+docker compose down -v        # stop AND wipe database
+docker compose logs -f app    # watch PHP/Apache logs
+docker compose logs -f db     # watch MySQL logs
+docker compose restart app    # restart app after file changes
 ```
 
-### 2. Edit config.php
+## Rebuilding after code changes
 
-```php
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'videoqueue');
-define('DB_USER', 'vquser');
-define('DB_PASS', 'a-strong-password');
-
-define('ADMIN_PASSWORD', 'your-admin-password');
-define('YT_API_KEY', '');        // optional — see below
-define('MAX_PER_IP', 3);         // max videos per user in queue at once
-define('COOLDOWN_SECONDS', 1800); // 30 min before same video can be re-queued
+```bash
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
-### 3. Upload all files to your server
+## Pushing to Docker Hub
 
-All files must be in the same folder.
+```bash
+docker login
+docker build -t robzwet/fts-player:latest .
+docker build -t robzwet/fts-player:0.2 .   # also tag a version
+docker push robzwet/fts-player:latest
+docker push robzwet/fts-player:0.2
+```
 
-### 4. Run setup.php
-
-Open `https://yoursite.com/setup.php` in your browser.
-
-You should see all green checkmarks. If not, check your DB credentials.
-
-**Delete or rename `setup.php` after setup** — it's no longer needed.
-
-### 5. You're live!
-
-| Page | Who uses it |
-|------|-------------|
-| `projector.html` | Open fullscreen (F11) on the projector |
-| `index.html` | Users scan the QR code to reach this |
-| `admin.html` | You — to manage the queue |
+Then on another server you only need `docker-compose.yml` — swap `build: .` for `image: robzwet/fts-player:latest` and run `docker compose up -d`.
 
 ---
 
-## YouTube API Key (optional)
+## Running without Docker (bare metal PHP)
 
-Without a key, users can still add videos by pasting a YouTube URL.
-To enable keyword search:
-
-1. Go to https://console.cloud.google.com
-2. Create a project → enable **YouTube Data API v3**
-3. Create an API key → paste it in `config.php` as `YT_API_KEY`
-
----
-
-## Database Schema
-
-### `queue` table
-Holds videos currently waiting to play.
-Automatically cleared as videos are played.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INT | Auto-increment primary key |
-| video_id | VARCHAR(11) | YouTube video ID |
-| title | VARCHAR(200) | Video title |
-| channel | VARCHAR(100) | Channel name |
-| duration | VARCHAR(20) | Duration string |
-| added_by | VARCHAR(45) | SHA-256 hash of submitter IP |
-| added_at | DATETIME | When it was added |
-| position | SMALLINT | Order in the queue |
-
-### `history` table
-Permanent log of every video that played. Never auto-cleared.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INT | Auto-increment primary key |
-| video_id | VARCHAR(11) | YouTube video ID |
-| title / channel / duration | — | Copied from queue at play time |
-| added_by | VARCHAR(45) | Submitter IP hash |
-| added_at | DATETIME | When it was originally queued |
-| played_at | DATETIME | When it actually played |
-
-### `settings` table
-Simple key/value store. Currently stores the ticker message.
+1. Upload all `.php` and `.html` files to your web root
+2. Edit `config.php` directly with your DB credentials
+3. Create the database in phpMyAdmin or MySQL:
+   ```sql
+   CREATE DATABASE videoqueue CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'vquser'@'localhost' IDENTIFIED BY 'yourpassword';
+   GRANT ALL PRIVILEGES ON videoqueue.* TO 'vquser'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+4. Open `setup.php` in your browser to create the tables
+5. Delete `setup.php` after setup
 
 ---
 
-## How It Works
+## Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_HOST` | `db` | MySQL host (`db` = Docker service name) |
+| `DB_PORT` | `3306` | MySQL port |
+| `DB_NAME` | `videoqueue` | Database name |
+| `DB_USER` | `vquser` | Database user |
+| `DB_PASS` | `changeme` | Database password |
+| `ADMIN_PASSWORD` | `changeme` | Fallback admin password (used before DB users are set up) |
+| `YT_API_KEY` | _(empty)_ | YouTube Data API v3 key |
+| `MAX_PER_IP` | `3` | Max videos one IP can queue at once |
+| `COOLDOWN_SECONDS` | `1800` | Seconds before same video can be re-queued |
+| `ALLOWED_ORIGIN` | _(empty)_ | CORS restriction (empty = allow all) |
+
+---
+
+## Project structure
 
 ```
-User (phone)        Admin (laptop)       Projector (TV/screen)
-     │                    │                      │
-     ▼                    ▼                      ▼
-  index.html          admin.html           projector.html
-     │                    │                      │
-     └────────────────────┴──────────────────────┘
-                          │
-                       api.php
-                          │
-                       MariaDB
-                    (queue / history / settings)
+├── index.html              User page — search & add videos
+├── projector.html          Fullscreen projector display
+├── admin.html              Admin panel
+├── api.php                 PHP backend API
+├── config.php              Reads config from environment variables
+├── setup.php               One-time DB setup (not needed with Docker)
+├── Dockerfile              PHP/Apache container
+├── docker-compose.yml      App + MySQL orchestration
+└── docker/
+    ├── 000-default.conf    Apache virtual host config
+    ├── entrypoint.sh       Waits for DB, runs init, starts Apache
+    ├── db-init.php         Creates tables at startup (CLI)
+    └── init.sql            SQL reference (not used by Docker directly)
 ```
-
-- Projector polls `api.php` every 4 seconds for queue changes
-- When a video ends, projector POSTs `action=played` → row moves from `queue` to `history`
-- Admin can reorder, remove, set the ticker, and view full play history + stats
-- Per-IP limits and cooldowns prevent spamming (configurable in `config.php`)

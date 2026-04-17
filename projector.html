@@ -40,13 +40,17 @@
 
   .video-wrap { flex: 1; position: relative; background: #000; overflow: hidden; }
 
-  #ytPlayer { position: absolute; inset: 0; width: 100%; height: 100%; border: none; display: none; }
+  #ytPlayer { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+  #ytPlayer iframe { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border: none; }
 
   .placeholder {
-    position: absolute; inset: 0;
+    position: absolute; inset: 0; z-index: 10;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
     background: radial-gradient(ellipse at 50% 40%, #1a1a2e 0%, #000 70%);
+    transition: opacity .4s;
+    cursor: pointer;
   }
+  .placeholder.hidden { opacity: 0; pointer-events: none; }
 
   .placeholder-ring {
     width: 96px; height: 96px; border: 3px solid var(--accent); border-radius: 50%;
@@ -164,12 +168,12 @@
   <!-- ══ LEFT PLAYER ══ -->
   <div class="player-col">
     <div class="video-wrap">
-      <div class="placeholder" id="placeholder">
-        <div class="placeholder-ring">
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        </div>
-        <div class="placeholder-label">Waiting for videos…</div>
-      </div>
+		<div class="placeholder" id="placeholder">
+		  <div class="placeholder-ring">
+			<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+		  </div>
+		  <div class="placeholder-label">Tap to activate display</div>
+		</div>
       <div id="ytPlayer"></div>
     </div>
 
@@ -197,7 +201,7 @@
     <div class="qr-section">
       <div class="qr-label">Add a Video</div>
       <div class="qr-frame" id="qrFrame">
-        <canvas id="qrCanvas"></canvas>
+        <img id="qrImg" width="130" height="130" alt="QR Code" style="display:block;border-radius:2px">
       </div>
       <div class="qr-sub">Scan to submit your video</div>
       <div class="qr-url" id="qrUrlDisplay"></div>
@@ -207,12 +211,11 @@
 
 <div class="clock" id="clock"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ═══════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════
-const API       = 'api.php';
+const API = window.location.pathname.replace(/[^\/]*$/, '') + 'api.php';
 const ADD_URL   = window.location.origin + (window.location.pathname.replace(/[^/]*$/, '') ) + 'index.html';
 const POLL_MS   = 4000;
 const DEFAULT_TICKER = '📺  Welcome!  ·  Submit your video using the QR code  ·  Videos play automatically  ·  Scan to join the queue  ·  ';
@@ -240,18 +243,18 @@ let ytApiReady = false;
 
 // ═══════════════════════════════════════════════
 //  QR CODE
+//  Uses qrserver.com API — no library needed.
 // ═══════════════════════════════════════════════
 (function() {
   document.getElementById('qrUrlDisplay').textContent = ADD_URL;
-  const canvas = document.getElementById('qrCanvas');
-  try {
-    new QRCode(canvas, { text: ADD_URL, width: 130, height: 130, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-  } catch(e) {
-    const img = document.createElement('img');
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(ADD_URL)}`;
-    img.width = 130; img.height = 130;
-    canvas.parentNode.replaceChild(img, canvas);
-  }
+  const img = document.getElementById('qrImg');
+  // Primary: qrserver.com free API
+  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=130x130&margin=0&data=' + encodeURIComponent(ADD_URL);
+  img.onerror = function() {
+    // Fallback: Google Charts API
+    this.onerror = null;
+    this.src = 'https://chart.googleapis.com/chart?cht=qr&chs=130x130&chl=' + encodeURIComponent(ADD_URL);
+  };
 })();
 
 // ═══════════════════════════════════════════════
@@ -335,48 +338,75 @@ function playAt(idx) {
   currentIdx = idx;
   const v = queue[idx];
 
-  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('placeholder').classList.add('hidden');
 
   if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+    ytPlayer.mute();
     ytPlayer.loadVideoById(v.id);
+    // Unmute after a short delay once playback starts
+    setTimeout(() => { try { ytPlayer.unMute(); } catch(e){} }, 1500);
   } else {
     ytPlayer = new YT.Player('ytPlayer', {
       videoId: v.id,
       width: '100%', height: '100%',
-      playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1, rel: 0, playsinline: 1 },
+      playerVars: {
+        autoplay:       1,
+        controls:       0,
+        disablekb:      1,
+        fs:             0,
+        iv_load_policy: 3,
+        modestbranding: 1,
+        rel:            0,
+        playsinline:    1,
+        mute:           1,  // start muted so autoplay works, unmuted once playing
+      },
       events: {
-        onReady:       e => e.target.playVideo(),
+        onReady: function(e) {
+          e.target.playVideo();
+          // Unmute after playback starts - gives browser time to allow it
+          setTimeout(() => { try { e.target.unMute(); e.target.setVolume(100); } catch(err){} }, 1500);
+        },
         onStateChange: onPlayerState,
         onError:       () => advance()
       }
     });
   }
 
-  // Tell the server this video is now playing
-  fetch(API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'played', id: v.id })
-  }).catch(() => {});
-
   played.add(v.id);
   renderPlaylist();
 }
 
 function onPlayerState(e) {
-  if (e.data === YT.PlayerState.ENDED) advance();
+  if (e.data === YT.PlayerState.ENDED) {
+    // Mark as played in DB when video actually finishes
+    const current = queue[currentIdx];
+    if (current) {
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'played', id: current.id })
+      }).catch(() => {});
+    }
+    advance();
+  }
 }
 
 function advance() {
-  if (currentIdx < queue.length - 1) {
-    playAt(currentIdx + 1);
-  } else {
-    // Queue exhausted
-    currentIdx = -1;
-    document.getElementById('placeholder').style.display = 'flex';
-    try { ytPlayer.stopVideo(); } catch(e) {}
-    renderPlaylist();
-  }
+  // After a video is marked played the API removes it from the queue,
+  // so the next video always becomes index 0 after polling catches up.
+  // We reset currentIdx and wait for the next poll to trigger tryAutoStart().
+  currentIdx = -1;
+  // Small delay to let the poll cycle fetch the updated queue from the server
+  setTimeout(async () => {
+    await poll();          // force an immediate poll
+    if (queue.length > 0) {
+      playAt(0);           // play whatever is now first
+    } else {
+      document.getElementById('placeholder').classList.remove('hidden');
+      try { ytPlayer.stopVideo(); } catch(e) {}
+      renderPlaylist();
+    }
+  }, 1000);
 }
 
 // ═══════════════════════════════════════════════
@@ -407,6 +437,54 @@ async function poll() {
 
 poll();
 setInterval(poll, POLL_MS);
+
+// ═══════════════════════════════════════════════
+//  PROJECTOR COMMAND LISTENER
+//  Polls api.php?action=command every 2s.
+//  Executes play/pause/next/volume/mute/unmute
+//  then ACKs so admin knows it was received.
+// ═══════════════════════════════════════════════
+async function pollCommand() {
+  try {
+    const r   = await fetch(API + '?action=command');
+    const res = await r.json();
+    if (!res.ok || !res.data) return;
+
+    const cmd = res.data;
+    executeCommand(cmd.cmd, cmd.value);
+
+    // Acknowledge
+    fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cmd_ack' })
+    }).catch(() => {});
+  } catch(e) {}
+}
+
+function executeCommand(cmd, value) {
+  if (!ytPlayer || typeof ytPlayer.playVideo !== 'function') return;
+  switch(cmd) {
+    case 'play':    ytPlayer.playVideo();            break;
+    case 'pause':   ytPlayer.pauseVideo();           break;
+    case 'next':    advance();                       break;
+    case 'volume':  ytPlayer.setVolume(parseInt(value) || 80);
+                    ytPlayer.unMute();               break;
+    case 'mute':    ytPlayer.mute();                 break;
+    case 'unmute':  ytPlayer.unMute();               break;
+  }
+}
+
+setInterval(pollCommand, 2000);
+
+// One-time click to unlock audio autoplay
+document.getElementById('placeholder').addEventListener('click', function() {
+  this.style.cursor = 'default';
+  // Create and immediately destroy a silent audio context to unlock autoplay
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume().then(() => ctx.close());
+  this.querySelector('.placeholder-label').textContent = 'Waiting for videos…';
+}, { once: true });
 </script>
 </body>
 </html>

@@ -43,10 +43,10 @@ services:
     container_name: fts_player_db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE:       videoqueue
-      MYSQL_USER:           vquser
-      MYSQL_PASSWORD:       changeme      # ← must match DB_PASS above
-      MYSQL_ROOT_PASSWORD:  changeme_root # ← change this
+      - MYSQL_DATABASE=videoqueue
+      - MYSQL_USER=vquser
+      - MYSQL_PASSWORD=changeme      # ← must match DB_PASS above
+      - MYSQL_ROOT_PASSWORD=changeme_root # ← change this
     volumes:
       - db_data:/var/lib/mysql            # data survives container restarts
     healthcheck:

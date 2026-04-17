@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+ 
   :root {
     --bg:      #08080f;
     --surface: #0f0f1a;
@@ -21,9 +21,9 @@
     --danger:  #ff4f47;
     --radius:  12px;
   }
-
+ 
   html { scroll-behavior: smooth; }
-
+ 
   body {
     background: var(--bg);
     color: var(--text);
@@ -31,7 +31,7 @@
     min-height: 100dvh;
     overflow-x: hidden;
   }
-
+ 
   body::before {
     content: '';
     position: fixed; inset: 0;
@@ -40,21 +40,21 @@
       radial-gradient(ellipse 40% 30% at 80% 80%,  rgba(71,255,178,.04) 0%, transparent 60%);
     pointer-events: none; z-index: 0;
   }
-
+ 
   .page {
     position: relative; z-index: 1;
     max-width: 560px;
     margin: 0 auto;
     padding: 0 20px 100px;
   }
-
+ 
   /* ── HEADER ── */
   .header {
     padding: 48px 0 36px;
     text-align: center;
     animation: fadeUp .5s ease both;
   }
-
+ 
   .eyebrow {
     display: inline-flex; align-items: center; gap: 7px;
     font-family: 'DM Mono', monospace;
@@ -66,14 +66,14 @@
     padding: 5px 14px;
     margin-bottom: 18px;
   }
-
+ 
   .live-dot {
     width: 5px; height: 5px; border-radius: 50%;
     background: var(--accent);
     animation: blink 1.2s ease-in-out infinite;
   }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
-
+ 
   h1 {
     font-family: 'Syne', sans-serif;
     font-size: clamp(2.2rem, 8vw, 3.2rem);
@@ -81,18 +81,18 @@
     margin-bottom: 12px;
   }
   h1 .hl { color: var(--accent); }
-
+ 
   .header-sub {
     font-size: .92rem; color: var(--muted2); line-height: 1.6;
     max-width: 360px; margin: 0 auto;
   }
-
+ 
   /* ── SEARCH ── */
   .search-wrap {
     margin-bottom: 24px;
     animation: fadeUp .5s .1s ease both;
   }
-
+ 
   .search-box {
     display: flex; align-items: center;
     background: var(--surface);
@@ -105,14 +105,14 @@
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(232,255,71,.1);
   }
-
+ 
   .search-icon {
     flex-shrink: 0; width: 52px; height: 56px;
     display: flex; align-items: center; justify-content: center;
     color: var(--muted);
   }
   .search-icon svg { width: 20px; height: 20px; fill: currentColor; }
-
+ 
   #searchInput {
     flex: 1; background: none; border: none; outline: none;
     color: var(--text); font-family: 'DM Sans', sans-serif;
@@ -120,7 +120,7 @@
     caret-color: var(--accent);
   }
   #searchInput::placeholder { color: var(--muted); }
-
+ 
   #clearBtn {
     flex-shrink: 0; background: none; border: none; cursor: pointer;
     width: 40px; height: 40px; border-radius: 8px;
@@ -131,7 +131,7 @@
   #clearBtn:hover { color: var(--text); background: var(--border); }
   #clearBtn svg { width: 16px; height: 16px; fill: currentColor; }
   #clearBtn.hidden { display: none; }
-
+ 
   .search-btn {
     flex-shrink: 0;
     background: var(--accent); color: #000;
@@ -145,20 +145,20 @@
   .search-btn:hover   { opacity: .85; }
   .search-btn:active  { transform: scale(.97); }
   .search-btn:disabled { opacity: .4; cursor: default; transform: none; }
-
+ 
   .search-hint {
     margin-top: 9px;
     font-family: 'DM Mono', monospace;
     font-size: .65rem; color: var(--muted);
     letter-spacing: .04em; text-align: center;
   }
-
+ 
   /* ── STATES ── */
   .state {
     text-align: center; padding: 48px 0 24px;
     animation: fadeUp .35s ease both;
   }
-
+ 
   .state-icon {
     width: 64px; height: 64px; border-radius: 50%;
     background: var(--surface); border: 1px solid var(--border);
@@ -166,10 +166,10 @@
     margin: 0 auto 16px;
   }
   .state-icon svg { width: 28px; height: 28px; fill: var(--muted); }
-
+ 
   .state-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
   .state-sub   { font-size: .84rem; color: var(--muted2); line-height: 1.6; }
-
+ 
   .spinner {
     width: 28px; height: 28px;
     border: 2.5px solid var(--border);
@@ -179,7 +179,7 @@
     margin: 0 auto;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-
+ 
   /* ── RESULTS ── */
   .results-label {
     font-family: 'DM Mono', monospace;
@@ -188,9 +188,9 @@
     margin-bottom: 12px;
     animation: fadeUp .3s ease both;
   }
-
+ 
   .results-grid { display: flex; flex-direction: column; gap: 10px; }
-
+ 
   /* ── VIDEO CARD ── */
   .vcard {
     background: var(--card); border: 1px solid var(--border);
@@ -212,15 +212,15 @@
   .vcard.added::before        { background: var(--green); }
   .vcard.in-queue             { opacity: .6; }
   .vcard.in-queue::before     { background: var(--muted); }
-
+ 
   .vcard-thumb {
     flex-shrink: 0; width: 110px; height: 62px;
     border-radius: 8px; object-fit: cover;
     background: var(--surface); border: 1px solid var(--border);
   }
-
+ 
   .vcard-body { flex: 1; min-width: 0; padding-top: 1px; }
-
+ 
   .vcard-title {
     font-size: .88rem; font-weight: 500; line-height: 1.35;
     margin-bottom: 5px;
@@ -229,15 +229,15 @@
   }
   .vcard.added    .vcard-title { color: var(--green); }
   .vcard.in-queue .vcard-title { color: var(--muted2); }
-
+ 
   .vcard-meta {
     font-family: 'DM Mono', monospace; font-size: .63rem;
     color: var(--muted2); display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
   }
   .vcard-meta-sep { color: var(--border); }
-
+ 
   .vcard-action { flex-shrink: 0; align-self: center; }
-
+ 
   .add-btn {
     background: var(--accent); color: #000;
     border: none; border-radius: 8px; cursor: pointer;
@@ -251,25 +251,25 @@
   .add-btn:active { transform: scale(.96); }
   .add-btn:disabled { opacity: .4; cursor: default; transform: none; }
   .add-btn svg { width: 14px; height: 14px; fill: currentColor; }
-
+ 
   .added-badge {
     display: none; align-items: center; gap: 6px;
     font-family: 'DM Mono', monospace; font-size: .7rem;
     color: var(--green); white-space: nowrap;
   }
   .added-badge svg { width: 14px; height: 14px; fill: currentColor; }
-
+ 
   .inqueue-badge {
     display: none; align-items: center; gap: 6px;
     font-family: 'DM Mono', monospace; font-size: .7rem;
     color: var(--muted2); white-space: nowrap;
   }
-
+ 
   .vcard.added    .add-btn        { display: none; }
   .vcard.added    .added-badge    { display: flex; }
   .vcard.in-queue .add-btn        { display: none; }
   .vcard.in-queue .inqueue-badge  { display: flex; }
-
+ 
   /* ── QUEUE PEEK ── */
   .queue-peek {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
@@ -277,37 +277,37 @@
     transition: transform .35s cubic-bezier(.16,1,.3,1);
   }
   .queue-peek.visible { transform: translateY(0); }
-
+ 
   .queue-peek-inner {
     max-width: 560px; margin: 0 auto;
     padding: 0 20px 16px;
   }
-
+ 
   .queue-bar {
     background: var(--accent); color: #000;
     border-radius: 14px; padding: 14px 18px;
     display: flex; align-items: center; gap: 12px;
     box-shadow: 0 -4px 40px rgba(232,255,71,.2);
   }
-
+ 
   .queue-bar-icon {
     width: 36px; height: 36px; border-radius: 8px;
     background: rgba(0,0,0,.12);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .queue-bar-icon svg { width: 18px; height: 18px; fill: #000; }
-
+ 
   .queue-bar-text { flex: 1; }
   .queue-bar-count { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 800; }
   .queue-bar-sub   { font-family: 'DM Mono', monospace; font-size: .63rem; opacity: .65; margin-top: 1px; }
-
+ 
   .queue-bar-check {
     width: 32px; height: 32px; border-radius: 50%;
     background: rgba(0,0,0,.12);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .queue-bar-check svg { width: 16px; height: 16px; fill: #000; }
-
+ 
   /* ── TOAST ── */
   .toast {
     position: fixed; top: 20px; left: 50%;
@@ -321,22 +321,104 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.err  { background: var(--danger); color: #fff; }
-
+ 
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+ 
+  /* ── MY VIDEOS SECTION ── */
+  .my-videos {
+    margin-top: 32px;
+    animation: fadeUp .4s .2s ease both;
+  }
+ 
+  .my-videos-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+ 
+  .my-videos-title {
+    font-family: 'DM Mono', monospace;
+    font-size: .65rem; color: var(--accent);
+    letter-spacing: .1em; text-transform: uppercase;
+  }
+ 
+  .my-videos-count {
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem; color: var(--muted);
+  }
+ 
+  .my-video-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px;
+    margin-bottom: 8px;
+    animation: fadeUp .3s ease both;
+    position: relative;
+  }
+  .my-video-item::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--accent);
+    border-radius: 3px 0 0 3px;
+  }
+ 
+  .my-thumb {
+    width: 72px; height: 41px; border-radius: 6px;
+    object-fit: cover; flex-shrink: 0;
+    background: var(--surface);
+  }
+ 
+  .my-meta { flex: 1; min-width: 0; }
+  .my-title {
+    font-size: .82rem; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 3px; color: var(--text);
+  }
+  .my-sub {
+    font-family: 'DM Mono', monospace; font-size: .62rem; color: var(--muted);
+  }
+ 
+  .my-pos {
+    font-family: 'DM Mono', monospace; font-size: .7rem;
+    color: var(--accent); flex-shrink: 0; text-align: right;
+    white-space: nowrap;
+  }
+ 
+  .my-remove {
+    flex-shrink: 0; background: none; border: 1px solid var(--border);
+    border-radius: 6px; cursor: pointer; color: var(--muted);
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    transition: color .15s, border-color .15s;
+  }
+  .my-remove:hover { color: var(--danger); border-color: var(--danger); }
+  .my-remove svg { width: 14px; height: 14px; fill: currentColor; }
+ 
+  .my-video-item.removing {
+    opacity: 0; transform: translateX(20px);
+    transition: opacity .3s, transform .3s;
+  }
+ 
+  .view-queue-link {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 20px;
+    font-family: 'DM Mono', monospace; font-size: .7rem;
+    color: var(--muted); text-decoration: none; letter-spacing: .06em;
+    transition: color .15s;
+  }
+  .view-queue-link:hover { color: var(--accent); }
+  .view-queue-link svg { width: 14px; height: 14px; fill: currentColor; }
 </style>
 </head>
 <body>
-
+ 
 <div class="page">
   <div class="header">
     <div class="eyebrow"><div class="live-dot"></div>Now Playing on the Big Screen</div>
     <h1>Pick a video<br>for the <span class="hl">crowd</span></h1>
     <p class="header-sub">Search for any YouTube video and add it to the live queue — it'll play on the projector automatically.</p>
   </div>
-
+ 
   <div class="search-wrap">
     <div class="search-box">
       <div class="search-icon">
@@ -350,10 +432,24 @@
     </div>
     <div class="search-hint">Or paste a YouTube link directly in the search box</div>
   </div>
-
+ 
   <div id="dynArea"></div>
 </div>
-
+ 
+  <!-- MY VIDEOS -->
+  <div class="my-videos" id="myVideos" style="display:none">
+    <div class="my-videos-header">
+      <span class="my-videos-title">My Videos in Queue</span>
+      <span class="my-videos-count" id="myVideosCount"></span>
+    </div>
+    <div id="myVideosList"></div>
+    <a href="queue.html" class="view-queue-link">
+      <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2z"/></svg>
+      View full playlist
+    </a>
+  </div>
+</div>
+ 
 <div class="queue-peek" id="queuePeek">
   <div class="queue-peek-inner">
     <div class="queue-bar">
@@ -370,20 +466,34 @@
     </div>
   </div>
 </div>
-
+ 
 <div class="toast" id="toast"></div>
-
+ 
 <script>
 const API = window.location.pathname.replace(/[^\/]*$/, '') + 'api.php';
 let addedThisSession = new Set();
 let knownQueueIds    = new Set();
-
+ 
+// ── SESSION TOKEN ─────────────────────────────
+// A random hex token stored in localStorage so the user can
+// see and remove their own queued videos across page refreshes.
+function getSessionToken() {
+  let token = localStorage.getItem('vq_session_token');
+  if (!token) {
+    token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem('vq_session_token', token);
+  }
+  return token;
+}
+const SESSION_TOKEN = getSessionToken();
+ 
 // ── API ──────────────────────────────────────
 async function apiFetch(params) {
   const r = await fetch(API + '?' + new URLSearchParams(params));
   return r.json();
 }
-
+ 
 async function apiPost(body) {
   const r = await fetch(API, {
     method: 'POST',
@@ -392,12 +502,12 @@ async function apiPost(body) {
   });
   return r.json();
 }
-
+ 
 // ── HELPERS ──────────────────────────────────
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
+ 
 function extractId(raw) {
   raw = raw.trim();
   if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
@@ -405,7 +515,7 @@ function extractId(raw) {
   for (const p of pats) { const m = raw.match(p); if (m) return m[1]; }
   return null;
 }
-
+ 
 // ── TOAST ────────────────────────────────────
 let toastTimer;
 function toast(msg, err) {
@@ -415,7 +525,7 @@ function toast(msg, err) {
   el.className = 'toast show' + (err ? ' err' : '');
   toastTimer = setTimeout(() => el.className = 'toast', 2600);
 }
-
+ 
 // ── QUEUE PEEK ───────────────────────────────
 function updatePeek() {
   const peek = document.getElementById('queuePeek');
@@ -424,21 +534,22 @@ function updatePeek() {
   peek.classList.add('visible');
   document.getElementById('peekCount').textContent = c + ' video' + (c !== 1 ? 's' : '') + ' added to queue';
 }
-
+ 
 // ── ADD TO QUEUE ─────────────────────────────
 async function addVideo(video, cardEl) {
   const btn = cardEl.querySelector('.add-btn');
   btn.disabled = true;
   btn.innerHTML = '<svg viewBox="0 0 24 24" style="animation:spin .6s linear infinite"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>';
-
-  const res = await apiPost({ action: 'add', video });
-
+ 
+  const res = await apiPost({ action: 'add', video, session_token: SESSION_TOKEN });
+ 
   if (res.ok) {
     cardEl.classList.add('added');
     addedThisSession.add(video.id);
     knownQueueIds.add(video.id);
     updatePeek();
     toast('✓ Added! It\'ll play on the projector soon.');
+    loadMyVideos();
   } else {
     btn.disabled = false;
     btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Add';
@@ -449,11 +560,11 @@ async function addVideo(video, cardEl) {
     }
   }
 }
-
+ 
 // ── RENDER RESULTS ───────────────────────────
 function renderResults(items) {
   const area = document.getElementById('dynArea');
-
+ 
   if (!items.length) {
     area.innerHTML = `
       <div class="state">
@@ -463,7 +574,7 @@ function renderResults(items) {
       </div>`;
     return;
   }
-
+ 
   area.innerHTML = `
     <div class="results-label">${items.length} result${items.length !== 1 ? 's' : ''}</div>
     <div class="results-grid">
@@ -498,19 +609,19 @@ function renderResults(items) {
       }).join('')}
     </div>`;
 }
-
+ 
 // ── SEARCH ───────────────────────────────────
 async function doSearch() {
   const raw = document.getElementById('searchInput').value.trim();
   if (!raw) return;
-
+ 
   document.getElementById('clearBtn').classList.remove('hidden');
   document.getElementById('searchBtn').disabled = true;
   document.getElementById('dynArea').innerHTML =
     `<div class="state"><div class="spinner"></div><div class="state-sub" style="margin-top:16px">Searching…</div></div>`;
-
+ 
   const directId = extractId(raw);
-
+ 
   try {
     if (directId) {
       // Direct URL/ID → oEmbed lookup
@@ -538,10 +649,10 @@ async function doSearch() {
         <div class="state-sub">Could not reach the server. Try again.</div>
       </div>`;
   }
-
+ 
   document.getElementById('searchBtn').disabled = false;
 }
-
+ 
 function clearSearch() {
   document.getElementById('searchInput').value = '';
   document.getElementById('clearBtn').classList.add('hidden');
@@ -549,13 +660,13 @@ function clearSearch() {
   document.getElementById('searchInput').focus();
   showIdle();
 }
-
+ 
 // ── INPUT EVENTS ─────────────────────────────
 document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 document.getElementById('searchInput').addEventListener('input', function() {
   document.getElementById('clearBtn').classList.toggle('hidden', !this.value);
 });
-
+ 
 // ── IDLE STATE ───────────────────────────────
 function showIdle() {
   document.getElementById('dynArea').innerHTML = `
@@ -567,7 +678,68 @@ function showIdle() {
       <div class="state-sub">Search above or paste a YouTube link — your video will play on the big screen.</div>
     </div>`;
 }
-
+ 
+// ── MY VIDEOS ────────────────────────────────
+async function loadMyVideos() {
+  try {
+    const res = await apiFetch({ action: 'my_queue', token: SESSION_TOKEN });
+    if (!res.ok) return;
+    renderMyVideos(res.data || []);
+  } catch(e) {}
+}
+ 
+function renderMyVideos(videos) {
+  const section = document.getElementById('myVideos');
+  const list    = document.getElementById('myVideosList');
+  const count   = document.getElementById('myVideosCount');
+ 
+  if (!videos.length) {
+    section.style.display = 'none';
+    return;
+  }
+ 
+  section.style.display = 'block';
+  count.textContent = videos.length + ' video' + (videos.length !== 1 ? 's' : '');
+ 
+  list.innerHTML = videos.map((v, i) => `
+    <div class="my-video-item" id="myitem-${escHtml(v.id)}" style="animation-delay:${i*0.05}s">
+      <img class="my-thumb"
+           src="https://img.youtube.com/vi/${escHtml(v.id)}/mqdefault.jpg"
+           onerror="this.src='https://img.youtube.com/vi/${escHtml(v.id)}/default.jpg'"
+           loading="lazy">
+      <div class="my-meta">
+        <div class="my-title">${escHtml(v.title)}</div>
+        <div class="my-sub">${escHtml(v.channel || '')}</div>
+      </div>
+      <div class="my-pos">#${v.position + 1} in queue</div>
+      <button class="my-remove" title="Remove my video"
+              onclick="removeMyVideo('${escHtml(v.id)}')">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>`).join('');
+}
+ 
+async function removeMyVideo(videoId) {
+  const item = document.getElementById('myitem-' + videoId);
+  if (item) item.classList.add('removing');
+ 
+  const res = await apiPost({ action: 'remove_own', id: videoId, session_token: SESSION_TOKEN });
+ 
+  if (res.ok) {
+    addedThisSession.delete(videoId);
+    knownQueueIds.delete(videoId);
+    // Update search results card if visible
+    const card = document.getElementById('card-' + videoId);
+    if (card) { card.classList.remove('added', 'in-queue'); }
+    updatePeek();
+    toast('Video removed from queue');
+    setTimeout(() => loadMyVideos(), 350);
+  } else {
+    if (item) item.classList.remove('removing');
+    toast(res.error || 'Could not remove video', true);
+  }
+}
+ 
 // ── INIT ─────────────────────────────────────
 (async function init() {
   showIdle();
@@ -577,6 +749,9 @@ function showIdle() {
     if (res.ok) (res.data.queue || []).forEach(v => knownQueueIds.add(v.id));
   } catch(e) {}
   updatePeek();
+  loadMyVideos();
+  // Refresh my videos periodically in case queue positions change
+  setInterval(loadMyVideos, 10000);
 })();
 </script>
 </body>

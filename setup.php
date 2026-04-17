@@ -4,18 +4,18 @@
 //  Safe to run multiple times (uses IF NOT EXISTS).
 //  Delete after setup.
 // ═══════════════════════════════════════════════
-
+ 
 require_once __DIR__ . '/config.php';
-
+ 
 $steps  = [];
 $errors = [];
-
+ 
 function step(string $label, bool $ok, string $detail = ''): void {
     global $steps, $errors;
     $steps[] = ['label' => $label, 'ok' => $ok, 'detail' => $detail];
     if (!$ok) $errors[] = $label;
 }
-
+ 
 // ── Connect ──────────────────────────────────────
 try {
     $dsn = sprintf('mysql:host=%s;port=%d;charset=%s', DB_HOST, DB_PORT, DB_CHARSET);
@@ -25,7 +25,7 @@ try {
     step('Connect to MySQL', false, $e->getMessage());
     $pdo = null;
 }
-
+ 
 // ── Create / select database ─────────────────────
 if ($pdo) {
     try {
@@ -37,10 +37,10 @@ if ($pdo) {
         $pdo = null;
     }
 }
-
+ 
 // ── Tables ───────────────────────────────────────
 $tables = [
-
+ 
     'queue' => "CREATE TABLE IF NOT EXISTS `queue` (
         `id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         `video_id`   VARCHAR(11)  NOT NULL,
@@ -48,12 +48,13 @@ $tables = [
         `channel`    VARCHAR(100) NOT NULL DEFAULT '',
         `duration`   VARCHAR(20)  NOT NULL DEFAULT '',
         `added_by`   VARCHAR(64)  NOT NULL DEFAULT '',
+            `session_token` VARCHAR(64) NOT NULL DEFAULT '',
         `added_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `position`   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
         INDEX idx_video_id (`video_id`),
         INDEX idx_position (`position`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-
+ 
     'history' => "CREATE TABLE IF NOT EXISTS `history` (
         `id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         `video_id`   VARCHAR(11)  NOT NULL,
@@ -66,13 +67,13 @@ $tables = [
         INDEX idx_video_id (`video_id`),
         INDEX idx_played_at (`played_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-
+ 
     'settings' => "CREATE TABLE IF NOT EXISTS `settings` (
         `key`        VARCHAR(60)  NOT NULL PRIMARY KEY,
         `value`      TEXT         NOT NULL,
         `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-
+ 
     'admins' => "CREATE TABLE IF NOT EXISTS `admins` (
         `id`            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         `username`      VARCHAR(40)  NOT NULL UNIQUE,
@@ -80,7 +81,7 @@ $tables = [
         `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 ];
-
+ 
 foreach ($tables as $name => $sql) {
     if (!$pdo) break;
     try {
@@ -90,7 +91,7 @@ foreach ($tables as $name => $sql) {
         step("Create table `{$name}`", false, $e->getMessage());
     }
 }
-
+ 
 // ── Seed settings ────────────────────────────────
 if ($pdo && empty($errors)) {
     try {
@@ -101,7 +102,7 @@ if ($pdo && empty($errors)) {
         step('Seed default settings', false, $e->getMessage());
     }
 }
-
+ 
 // ── Fix added_by column width if it was created as VARCHAR(45) ───────────────
 if ($pdo && empty($errors)) {
     foreach (['queue', 'history'] as $t) {
@@ -119,7 +120,7 @@ if ($pdo && empty($errors)) {
         }
     }
 }
-
+ 
 // ── Verify counts ────────────────────────────────
 if ($pdo && empty($errors)) {
     foreach (['queue', 'history', 'settings', 'admins'] as $t) {
@@ -131,7 +132,7 @@ if ($pdo && empty($errors)) {
         }
     }
 }
-
+ 
 $allOk = empty($errors);
 ?>
 <!DOCTYPE html>
@@ -164,7 +165,7 @@ $allOk = empty($errors);
 <div class="wrap">
   <h1>Video Queue — Setup</h1>
   <p class="sub">Database initialisation</p>
-
+ 
   <?php foreach ($steps as $s): ?>
   <div class="step">
     <div class="icon <?= $s['ok'] ? 'ok' : 'err' ?>"><?= $s['ok'] ? '✓' : '✗' ?></div>
@@ -176,7 +177,7 @@ $allOk = empty($errors);
     </div>
   </div>
   <?php endforeach; ?>
-
+ 
   <?php if ($allOk): ?>
   <div class="result ok">
     <strong>✓ Setup complete!</strong>

@@ -26,6 +26,8 @@ define('ADMIN_PASSWORD', env('ADMIN_PASSWORD', 'changeme'));
 define('YT_API_KEY', env('YT_API_KEY', ''));
 
 // ── Queue rules ───────────────────────────────────
+// MAX_PER_IP limits per device/browser session, not per IP.
+// Works correctly when all users share the same WiFi/NAT.
 define('MAX_PER_IP',       (int)env('MAX_PER_IP',       '3'));
 define('COOLDOWN_SECONDS', (int)env('COOLDOWN_SECONDS', '1800'));
 

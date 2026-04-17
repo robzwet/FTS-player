@@ -346,16 +346,19 @@ if ($method === 'POST') {
             }
         }
  
-        if (MAX_PER_IP > 0) {
-            $ipCount = $db->prepare("SELECT COUNT(*) FROM queue WHERE added_by = ?");
-            $ipCount->execute([$submitter]);
-            if ((int)$ipCount->fetchColumn() >= MAX_PER_IP) {
+        // Limit per session token (per device) rather than per IP,
+        // so everyone on the same WiFi/NAT gets their own independent limit.
+        $token = sanitizeToken($body['session_token'] ?? '');
+ 
+        if (MAX_PER_IP > 0 && $token !== '') {
+            $tokenCount = $db->prepare("SELECT COUNT(*) FROM queue WHERE session_token = ?");
+            $tokenCount->execute([$token]);
+            if ((int)$tokenCount->fetchColumn() >= MAX_PER_IP) {
                 fail('You already have ' . MAX_PER_IP . ' video(s) in the queue. Wait for one to play first.');
             }
         }
  
         $maxPos = (int)$db->query("SELECT COALESCE(MAX(position), -1) FROM queue")->fetchColumn();
-        $token  = sanitizeToken($body['session_token'] ?? '');
  
         $db->prepare(
             "INSERT INTO queue (video_id, title, channel, duration, added_by, session_token, position)
@@ -537,3 +540,4 @@ if ($method === 'POST') {
 }
  
 fail('Method not allowed', 405);
+ 

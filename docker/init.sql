@@ -45,5 +45,13 @@ CREATE TABLE IF NOT EXISTS `admins` (
     `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
  
+CREATE TABLE IF NOT EXISTS `search_cache` (
+    `query_hash` VARCHAR(32)  NOT NULL PRIMARY KEY,
+    `query_text` VARCHAR(200) NOT NULL DEFAULT '',
+    `result`     MEDIUMTEXT   NOT NULL,
+    `cached_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cached_at (`cached_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ 
 INSERT IGNORE INTO `settings` (`key`, `value`) VALUES ('ticker', '');
 INSERT IGNORE INTO `settings` (`key`, `value`) VALUES ('projector_command', '');

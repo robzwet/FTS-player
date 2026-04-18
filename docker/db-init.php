@@ -70,12 +70,30 @@ try {
     foreach ($tables as $sql) {
         $pdo->exec($sql);
     }
+    // search_cache — stores YouTube search results to save API quota
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `search_cache` (
+        `query_hash` VARCHAR(32)  NOT NULL PRIMARY KEY,
+        `query_text` VARCHAR(200) NOT NULL DEFAULT '',
+        `result`     MEDIUMTEXT   NOT NULL,
+        `cached_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_cached_at (`cached_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+ 
     echo "[db-init] Tables ready\n";
  
     // Seed default settings
     $pdo->exec("INSERT IGNORE INTO `settings` (`key`, `value`) VALUES ('ticker', '')");
     $pdo->exec("INSERT IGNORE INTO `settings` (`key`, `value`) VALUES ('projector_command', '')");
     echo "[db-init] Settings seeded\n";
+ 
+    // Create search_cache table if it doesn't exist (migration for existing installs)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `search_cache` (
+        `query_hash` VARCHAR(32)  NOT NULL PRIMARY KEY,
+        `query_text` VARCHAR(200) NOT NULL DEFAULT '',
+        `result`     MEDIUMTEXT   NOT NULL,
+        `cached_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_cached_at (`cached_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
  
     // Add session_token column if it doesn't exist yet (migration for existing installs)
     $cols = $pdo->query("SHOW COLUMNS FROM `queue` LIKE 'session_token'")->fetchAll();
@@ -106,4 +124,3 @@ try {
     echo "[db-init] ERROR: " . $e->getMessage() . "\n";
     exit(1);
 }
- 

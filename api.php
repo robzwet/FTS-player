@@ -173,13 +173,51 @@ function getCommand(): ?array {
     return $cmd;
 }
  
+// ── Search result cache ──────────────────────────
+// Caches YouTube search results in the DB to avoid burning quota
+// on repeated searches for the same query.
+// Each search costs 100 quota units — caching saves ~90% of calls at events.
+const SEARCH_CACHE_TTL = 600; // seconds (10 minutes)
+ 
+function getCachedSearch(string $q): ?array {
+    try {
+        $row = db()->prepare(
+            "SELECT result, cached_at FROM search_cache WHERE query_hash = ? LIMIT 1"
+        );
+        $row->execute([md5(strtolower(trim($q)))]);
+        $hit = $row->fetch();
+        if (!$hit) return null;
+        if (time() - strtotime($hit['cached_at']) > SEARCH_CACHE_TTL) return null;
+        return json_decode($hit['result'], true);
+    } catch (\PDOException $e) {
+        return null; // cache table may not exist yet — fail gracefully
+    }
+}
+ 
+function setCachedSearch(string $q, array $results): void {
+    try {
+        db()->prepare(
+            "INSERT INTO search_cache (query_hash, query_text, result, cached_at)
+             VALUES (?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE result = VALUES(result), cached_at = NOW()"
+        )->execute([md5(strtolower(trim($q))), mb_substr($q, 0, 200), json_encode($results)]);
+    } catch (\PDOException $e) {
+        // Silently ignore cache write failures
+    }
+}
+ 
 // ── YouTube helpers ──────────────────────────────
 function ytSearch(string $q): array {
     if (!YT_API_KEY) fail('YouTube API key not configured', 501);
-    $q = urlencode($q);
+ 
+    // Check cache first — saves 100 quota units per cache hit
+    $cached = getCachedSearch($q);
+    if ($cached !== null) return $cached;
+ 
+    $qEnc = urlencode($q);
  
     $searchRaw = @file_get_contents(
-        "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=8&q={$q}&key=" . YT_API_KEY
+        "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=8&q={$qEnc}&key=" . YT_API_KEY
     );
     if (!$searchRaw) fail('YouTube search request failed');
     $search = json_decode($searchRaw, true);
@@ -197,7 +235,7 @@ function ytSearch(string $q): array {
     $detailMap = [];
     foreach ($detail['items'] ?? [] as $item) $detailMap[$item['id']] = $item;
  
-    return array_map(function($item) use ($detailMap) {
+    $results = array_map(function($item) use ($detailMap) {
         $id  = $item['id']['videoId'];
         $det = $detailMap[$id] ?? [];
         return [
@@ -208,6 +246,11 @@ function ytSearch(string $q): array {
             'views'    => formatViews($det['statistics']['viewCount']       ?? ''),
         ];
     }, $search['items'] ?? []);
+ 
+    // Store in cache so the same query doesn't cost quota again for 10 minutes
+    setCachedSearch($q, $results);
+ 
+    return $results;
 }
  
 function ytOembed(string $id): array {
@@ -540,4 +583,3 @@ if ($method === 'POST') {
 }
  
 fail('Method not allowed', 405);
- 

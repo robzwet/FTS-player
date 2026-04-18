@@ -100,15 +100,15 @@
 
   /* ── TICKER ── */
   .ticker-bar {
-    flex-shrink: 0; height: 44px; background: #0c0c14;
+    flex-shrink: 0; height: 80px; background: #0c0c14;
     border-top: 1px solid var(--border);
     display: flex; align-items: center; overflow: hidden;
   }
 
   .ticker-tag {
     flex-shrink: 0; background: var(--accent); color: #000;
-    font-family: 'Bebas Neue', sans-serif; font-size: .95rem; letter-spacing: .18em;
-    padding: 0 14px; height: 100%; display: flex; align-items: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: .18em;
+    padding: 0 26px; height: 100%; display: flex; align-items: center;
   }
 
   .ticker-track {
@@ -118,7 +118,7 @@
   }
 
   .ticker-inner { display: flex; white-space: nowrap; will-change: transform; }
-  .ticker-inner span { font-family: 'DM Mono', monospace; font-size: .75rem; letter-spacing: .05em; color: var(--text); padding-right: 60px; }
+  .ticker-inner span { font-family: 'DM Mono', monospace; font-size: 1.35rem; letter-spacing: .05em; color: var(--text); padding-right: 80px; }
 
   @keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
 
@@ -172,20 +172,20 @@
   /* ── QR ── */
   .qr-section {
     flex-shrink: 0; border-top: 1px solid var(--border);
-    padding: 14px 16px 16px;
-    display: flex; flex-direction: column; align-items: center; gap: 9px; background: #0d0d15;
+    padding: 20px 16px 22px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px; background: #0d0d15;
   }
 
-  .qr-label { font-family: 'Bebas Neue', sans-serif; font-size: 1.05rem; letter-spacing: .2em; color: var(--accent); text-align: center; }
+  .qr-label { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: .2em; color: var(--accent); text-align: center; }
 
   .qr-frame {
-    background: #fff; padding: 8px; border-radius: 8px; line-height: 0;
-    box-shadow: 0 0 0 1px var(--border), 0 0 22px rgba(232,255,71,.1);
+    background: #fff; padding: 10px; border-radius: 10px; line-height: 0;
+    box-shadow: 0 0 0 1px var(--border), 0 0 28px rgba(232,255,71,.15);
   }
   .qr-frame canvas, .qr-frame img { display: block; border-radius: 2px; }
 
-  .qr-sub  { font-family: 'DM Mono', monospace; font-size: .62rem; color: var(--muted); text-align: center; line-height: 1.5; letter-spacing: .04em; }
-  .qr-url  { font-family: 'DM Mono', monospace; font-size: .58rem; color: #333355; text-align: center; word-break: break-all; }
+  .qr-sub  { font-family: 'DM Mono', monospace; font-size: .85rem; color: var(--muted); text-align: center; line-height: 1.5; letter-spacing: .04em; }
+  .qr-url  { font-family: 'DM Mono', monospace; font-size: .65rem; color: #aaaacc; text-align: center; word-break: break-all; }
 
   .clock {
     position: fixed; bottom: 11px; left: 16px;
@@ -239,7 +239,7 @@
     <div class="qr-section">
       <div class="qr-label">Add a Video</div>
       <div class="qr-frame" id="qrFrame">
-        <img id="qrImg" width="130" height="130" alt="QR Code" style="display:block;border-radius:2px">
+        <img id="qrImg" width="200" height="200" alt="QR Code" style="display:block;border-radius:2px">
       </div>
       <div class="qr-sub">Scan to submit your video</div>
       <div class="qr-url" id="qrUrlDisplay"></div>
@@ -287,11 +287,11 @@ let ytApiReady = false;
   document.getElementById('qrUrlDisplay').textContent = ADD_URL;
   const img = document.getElementById('qrImg');
   // Primary: qrserver.com free API
-  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=130x130&margin=0&data=' + encodeURIComponent(ADD_URL);
+  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=' + encodeURIComponent(ADD_URL);
   img.onerror = function() {
     // Fallback: Google Charts API
     this.onerror = null;
-    this.src = 'https://chart.googleapis.com/chart?cht=qr&chs=130x130&chl=' + encodeURIComponent(ADD_URL);
+    this.src = 'https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=' + encodeURIComponent(ADD_URL);
   };
 })();
 

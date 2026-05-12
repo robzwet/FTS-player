@@ -259,7 +259,17 @@
  
 <script>
 const API = window.location.pathname.replace(/[^\/]*$/, '') + 'api.php';
- 
+
+(async function() {
+  try {
+    const res = await fetch(API + '?action=site_settings').then(r => r.json());
+    if (res.ok && res.data) {
+      if (res.data.accent) document.documentElement.style.setProperty('--accent', res.data.accent);
+      if (res.data.title)  document.title = res.data.title;
+    }
+  } catch(e) {}
+})();
+
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

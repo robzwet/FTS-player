@@ -379,6 +379,14 @@ if ($method === 'GET') {
         ok($raw ? json_decode($raw, true) : null);
     }
 
+    // Public site settings (title + accent color)
+    if ($action === 'site_settings') {
+        $raw = db()->query(
+            "SELECT value FROM settings WHERE `key` = 'site_settings'"
+        )->fetchColumn();
+        ok($raw ? json_decode($raw, true) : (object)[]);
+    }
+
     // List admin users [admin]
     if ($action === 'list_admins') {
         $body = [];
@@ -677,6 +685,19 @@ if ($method === 'POST') {
         $db->prepare("DELETE FROM admins WHERE username = ?")->execute([$target]);
         $rows = $db->query("SELECT username, created_at FROM admins ORDER BY created_at ASC")->fetchAll();
         ok($rows);
+    }
+
+    // ── Site settings (admin) ────────────────────
+    if ($action === 'site_settings') {
+        requireAdmin($body);
+        $title  = mb_substr(strip_tags($body['title']  ?? ''), 0, 100);
+        $accent = preg_match('/^#[0-9a-fA-F]{6}$/', $body['accent'] ?? '') ? $body['accent'] : '#e8ff47';
+        $payload = json_encode(['title' => $title, 'accent' => $accent]);
+        db()->prepare(
+            "INSERT INTO settings (`key`, value) VALUES ('site_settings', ?)
+             ON DUPLICATE KEY UPDATE value = VALUES(value)"
+        )->execute([$payload]);
+        ok(['title' => $title, 'accent' => $accent]);
     }
 
     fail('Unknown action');

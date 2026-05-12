@@ -67,6 +67,25 @@
   .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 1.2s ease-in-out infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
 
+  /* ── TABS ── */
+  .tabs-bar {
+    position: sticky; top: 56px; z-index: 9;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; gap: 0; padding: 0 20px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs-bar::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    cursor: pointer; white-space: nowrap;
+    font-family: 'DM Mono', monospace; font-size: .68rem;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); padding: 13px 16px;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
   /* ── LAYOUT ── */
   .wrap { max-width: 960px; margin: 0 auto; padding: 28px 24px; display: flex; flex-direction: column; gap: 24px; }
 
@@ -95,6 +114,7 @@
   textarea { resize: vertical; min-height: 60px; }
   .field { margin-bottom: 16px; }
   .field:last-child { margin-bottom: 0; }
+  .field-hint { font-family: 'DM Mono', monospace; font-size: .63rem; color: var(--muted); margin-top: 5px; }
   .row { display: flex; gap: 12px; }
   .row .field { flex: 1; }
 
@@ -164,9 +184,7 @@
   }
   .progress-times .cur { color: var(--accent); }
 
-  .seek-wrap {
-    position: relative; width: 100%;
-  }
+  .seek-wrap { position: relative; width: 100%; }
 
   .seek-slider {
     -webkit-appearance: none; appearance: none;
@@ -298,6 +316,42 @@
   .hist-title { font-size: .78rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hist-sub   { font-family: 'DM Mono', monospace; font-size: .62rem; color: var(--muted); }
 
+  /* ── COLOR SWATCHES ── */
+  .color-presets {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .swatch {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid transparent; cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    flex-shrink: 0; position: relative;
+  }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active {
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #ffffff88;
+  }
+  .swatch-custom-wrap {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px dashed var(--border); overflow: hidden;
+    cursor: pointer; position: relative; flex-shrink: 0;
+    transition: border-color .15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .swatch-custom-wrap:hover { border-color: var(--accent); }
+  .swatch-custom-wrap input[type="color"] {
+    position: absolute; inset: -4px;
+    width: calc(100% + 8px); height: calc(100% + 8px);
+    cursor: pointer; border: none; padding: 0; opacity: 0;
+  }
+  .swatch-custom-icon { color: var(--muted); pointer-events: none; }
+  .swatch-custom-icon svg { width: 14px; height: 14px; fill: currentColor; }
+
+  .color-preview-bar {
+    margin-top: 12px; height: 4px; border-radius: 2px;
+    background: var(--accent); transition: background .2s;
+  }
+
   /* ── TOAST ── */
   .toast {
     position: fixed; bottom: 24px; right: 24px;
@@ -332,12 +386,22 @@
 <!-- TOPBAR -->
 <div class="topbar">
   <div>
-    <div class="topbar-logo">Video Queue Admin</div>
+    <div class="topbar-logo" id="topbarLogo">Video Queue Admin</div>
     <div class="topbar-user" id="topbarUser"></div>
   </div>
   <div class="live-pill"><div class="live-dot"></div>LIVE</div>
 </div>
 
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('controls', this)">Controls</button>
+  <button class="tab-btn" onclick="switchTab('history', this)">History</button>
+  <button class="tab-btn" onclick="switchTab('users', this)">Users</button>
+  <button class="tab-btn" onclick="switchTab('settings', this)">Settings</button>
+</div>
+
+<!-- ══ CONTROLS TAB ══ -->
+<div id="panel-controls" class="tab-panel">
 <div class="wrap">
 
   <!-- PROJECTOR CONTROLS -->
@@ -487,7 +551,13 @@
     </div>
   </div>
 
-  <!-- PLAY HISTORY -->
+</div>
+</div>
+
+<!-- ══ HISTORY TAB ══ -->
+<div id="panel-history" class="tab-panel" hidden>
+<div class="wrap">
+
   <div class="card">
     <div class="card-head">
       <span class="card-title">Play History</span>
@@ -505,7 +575,13 @@
     <div id="historyList"><div class="empty-state">No history yet</div></div>
   </div>
 
-  <!-- ADMIN USERS -->
+</div>
+</div>
+
+<!-- ══ USERS TAB ══ -->
+<div id="panel-users" class="tab-panel" hidden>
+<div class="wrap">
+
   <div class="card">
     <div class="card-head"><span class="card-title">Admin Users</span></div>
     <div id="adminUserList"><div class="empty-state">Loading…</div></div>
@@ -529,6 +605,55 @@
   </div>
 
 </div>
+</div>
+
+<!-- ══ SETTINGS TAB ══ -->
+<div id="panel-settings" class="tab-panel" hidden>
+<div class="wrap">
+
+  <div class="card">
+    <div class="card-head"><span class="card-title">Site Settings</span></div>
+    <div class="card-body">
+
+      <div class="field">
+        <label>Event / Site Title</label>
+        <input type="text" id="siteTitle" placeholder="e.g. Friday Night Party" maxlength="100">
+        <div class="field-hint">Shown in the browser tab and topbar on all pages. Leave empty for the default.</div>
+      </div>
+
+      <div class="field" style="margin-top:8px">
+        <label>Accent Color</label>
+        <div class="color-presets">
+          <button class="swatch" style="background:#e8ff47" data-color="#e8ff47" title="Lime (default)" onclick="selectSwatch('#e8ff47', this)"></button>
+          <button class="swatch" style="background:#47b8ff" data-color="#47b8ff" title="Sky Blue"       onclick="selectSwatch('#47b8ff', this)"></button>
+          <button class="swatch" style="background:#ff9d47" data-color="#ff9d47" title="Orange"         onclick="selectSwatch('#ff9d47', this)"></button>
+          <button class="swatch" style="background:#ff47c4" data-color="#ff47c4" title="Pink"           onclick="selectSwatch('#ff47c4', this)"></button>
+          <button class="swatch" style="background:#47ffb2" data-color="#47ffb2" title="Mint"           onclick="selectSwatch('#47ffb2', this)"></button>
+          <button class="swatch" style="background:#c447ff" data-color="#c447ff" title="Purple"         onclick="selectSwatch('#c447ff', this)"></button>
+          <button class="swatch" style="background:#ff6b6b" data-color="#ff6b6b" title="Coral"          onclick="selectSwatch('#ff6b6b', this)"></button>
+          <div class="swatch-custom-wrap" title="Custom color">
+            <input type="color" id="customColorInput" value="#e8ff47" oninput="onCustomColor(this.value)">
+            <span class="swatch-custom-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13v-4H7l5-8v4h4l-5 8z"/></svg>
+            </span>
+          </div>
+        </div>
+        <div class="color-preview-bar" id="colorPreviewBar"></div>
+        <div class="field-hint" style="margin-top:6px">Changes the highlight color across all pages of the site.</div>
+      </div>
+
+      <div style="margin-top:20px">
+        <button class="btn btn-accent" onclick="saveSiteSettings()">
+          <svg viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+          Save Settings
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -539,7 +664,16 @@ const DEFAULT_TICKER = '📺  Welcome!  ·  Submit your video using the QR code 
 let adminUsername = '';
 let adminPassword = '';
 let appState      = { queue: [], ticker: '', played: [] };
-let projLastSeen  = 0;  // timestamp of last projector poll (tracked via command ack)
+let projLastSeen  = 0;
+let currentAccent = '#e8ff47';
+
+// Apply branding on page load (site_settings is public — no auth needed)
+(async function() {
+  try {
+    const res = await fetch(API + '?action=site_settings').then(r => r.json());
+    if (res.ok && res.data) applySiteSettings(res.data);
+  } catch(e) {}
+})();
 
 // ── API ───────────────────────────────────────
 async function apiFetch(params) {
@@ -566,6 +700,17 @@ function toast(msg, err) {
   toastTimer = setTimeout(() => el.className = 'toast', 2600);
 }
 
+// ── TABS ──────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.hidden = true);
+  btn.classList.add('active');
+  document.getElementById('panel-' + name).hidden = false;
+  if (name === 'history')  loadHistory();
+  if (name === 'users')    loadAdminUsers();
+  if (name === 'settings') loadSiteSettingsIntoForm();
+}
+
 // ── LOGIN ─────────────────────────────────────
 async function doLogin() {
   const user = document.getElementById('pwUser').value.trim();
@@ -587,8 +732,6 @@ async function doLogin() {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('topbarUser').textContent = 'Signed in as ' + user.toUpperCase();
     loadState();
-    loadHistory();
-    loadAdminUsers();
     setInterval(loadState, 5000);
     pollProgress();
     setInterval(pollProgress, 2000);
@@ -658,18 +801,14 @@ async function pollProgress() {
     const dur = p.duration || 0;
     const pct = dur > 0 ? (cur / dur) * 100 : 0;
 
-    // Show the section
     document.getElementById('progressSection').classList.add('visible');
 
-    // Update title from queue
     const v = (appState.queue || []).find(v => v.id === p.video_id);
     document.getElementById('progTitle').textContent = v ? v.title : p.video_id;
 
-    // Update times
     document.getElementById('progCur').textContent = fmtSec(cur);
     document.getElementById('progDur').textContent = fmtSec(dur);
 
-    // Update slider (only if user isn't dragging)
     if (!_seekDragging) {
       const slider = document.getElementById('seekSlider');
       slider.max   = dur;
@@ -689,7 +828,6 @@ function fmtSec(sec) {
 }
 
 function onSeekInput(el) {
-  // While dragging — update display but don't send command yet
   _seekDragging = true;
   const cur = parseInt(el.value);
   const dur = parseInt(el.max) || 1;
@@ -699,18 +837,14 @@ function onSeekInput(el) {
 }
 
 function onSeekCommit(el) {
-  // On release — send seek command to projector
   _seekDragging = false;
   sendCmd('seek', parseInt(el.value));
 }
 
 // ── PROJECTOR STATUS + CONTROLS ───────────────
 async function checkProjStatus() {
-  // We determine projector online status by checking when the command was last acked.
-  // The projector polls every 2s, so if ack happened within last 10s it's online.
   try {
-    const res = await apiFetch({ action: 'command' });
-    // If the endpoint responds, the API is alive. Projector status is inferred from last ack.
+    await apiFetch({ action: 'command' });
     updateProjStatus(true);
   } catch(e) {
     updateProjStatus(false);
@@ -994,6 +1128,65 @@ async function removeAdmin(username) {
   const res = await apiPost({ action: 'remove_admin', target_username: username });
   if (res.ok) { renderAdminUsers(res.data); toast('Admin removed'); }
   else toast(res.error, true);
+}
+
+// ── SITE SETTINGS ─────────────────────────────
+function applySiteSettings(data) {
+  if (data.accent) {
+    currentAccent = data.accent;
+    document.documentElement.style.setProperty('--accent', data.accent);
+    const bar = document.getElementById('colorPreviewBar');
+    if (bar) bar.style.background = data.accent;
+  }
+  if (data.title) {
+    document.getElementById('topbarLogo').textContent = data.title + ' · Admin';
+    document.title = data.title + ' · Admin';
+  }
+}
+
+async function loadSiteSettingsIntoForm() {
+  const res = await apiFetch({ action: 'site_settings' });
+  if (!res.ok) return;
+  const data = res.data || {};
+  applySiteSettings(data);
+
+  document.getElementById('siteTitle').value = data.title || '';
+
+  const accent = data.accent || '#e8ff47';
+  currentAccent = accent;
+  document.getElementById('customColorInput').value = accent;
+  document.getElementById('colorPreviewBar').style.background = accent;
+
+  document.querySelectorAll('.swatch[data-color]').forEach(s => {
+    s.classList.toggle('active', s.dataset.color.toLowerCase() === accent.toLowerCase());
+  });
+}
+
+function selectSwatch(color, el) {
+  currentAccent = color;
+  document.documentElement.style.setProperty('--accent', color);
+  document.querySelectorAll('.swatch[data-color]').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('customColorInput').value = color;
+  document.getElementById('colorPreviewBar').style.background = color;
+}
+
+function onCustomColor(hex) {
+  currentAccent = hex;
+  document.documentElement.style.setProperty('--accent', hex);
+  document.getElementById('colorPreviewBar').style.background = hex;
+  document.querySelectorAll('.swatch[data-color]').forEach(s => s.classList.remove('active'));
+}
+
+async function saveSiteSettings() {
+  const title = document.getElementById('siteTitle').value.trim();
+  const res = await apiPost({ action: 'site_settings', title, accent: currentAccent });
+  if (res.ok) {
+    applySiteSettings(res.data);
+    toast('✓ Settings saved');
+  } else {
+    toast(res.error || 'Could not save settings', true);
+  }
 }
 </script>
 </body>

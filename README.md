@@ -4,6 +4,14 @@ A live YouTube queue system for projector screens. Users scan a QR code, search 
 
 ---
 
+## Requirements
+
+> **HTTPS is required.** Browsers block the YouTube IFrame player on plain `http://` pages. You must serve the app over HTTPS (SSL certificate) or the projector display will show a blank player.
+>
+> For local testing, use `localhost` — browsers allow the YouTube embed on localhost without HTTPS.
+
+---
+
 ## Quick Start with Docker
 
 ### 1. Edit `docker-compose.yml`
@@ -22,6 +30,8 @@ Optionally add a YouTube API key to enable keyword search:
 YT_API_KEY: "AIzaSy..."
 ```
 
+> Without a YouTube API key, users can still add videos by pasting a YouTube URL or video ID directly.
+
 ### 2. Start
 
 ```bash
@@ -35,13 +45,23 @@ Docker will:
 - Automatically create all database tables
 - Start Apache
 
-### 3. Open the pages
+### 3. Set up SSL
+
+The app must be served over HTTPS. Options:
+
+- **Reverse proxy (recommended):** Put Nginx or Traefik in front of the container and terminate SSL there. Point it to port `8080` (or whichever port you mapped in `docker-compose.yml`).
+- **Certbot / Let's Encrypt:** Free certificates for domains you own. Works well with Nginx proxy.
+- **Self-signed certificate:** For internal/LAN use. Browsers will show a warning but will still allow the YouTube embed after you accept it.
+- **Localhost:** No SSL needed when accessing via `http://localhost` during development.
+
+### 4. Open the pages
 
 | Page | URL | Who |
 |------|-----|-----|
-| User page | `http://yourserver/index.html` | Audience — scan QR to add videos |
-| Projector | `http://yourserver/projector.html` | Open fullscreen (F11) on the projector |
-| Admin | `http://yourserver/admin.html` | You |
+| User page | `https://yourserver/index.html` | Audience — scan QR to add videos |
+| Projector | `https://yourserver/projector.html` | Open fullscreen (F11) on the projector |
+| Admin | `https://yourserver/admin.html` | You |
+| Queue view | `https://yourserver/queue.html` | Display-only queue overview |
 
 > **No need to run `setup.php`** when using Docker — the database is initialised automatically at container start.
 
@@ -71,12 +91,37 @@ docker compose up -d
 ```bash
 docker login
 docker build -t robzwet/fts-player:latest .
-docker build -t robzwet/fts-player:0.2 .   # also tag a version
+docker build -t robzwet/fts-player:0.3 .   # also tag a version
 docker push robzwet/fts-player:latest
-docker push robzwet/fts-player:0.2
+docker push robzwet/fts-player:0.3
 ```
 
 Then on another server you only need `docker-compose.yml` — swap `build: .` for `image: robzwet/fts-player:latest` and run `docker compose up -d`.
+
+---
+
+## Admin panel
+
+Open `https://yourserver/admin.html` and sign in with the credentials from `docker-compose.yml`. The panel is split into four tabs:
+
+### Controls
+- **Projector remote** — play, pause, skip, volume, mute, seek
+- **Live progress bar** — shows current playback position; drag to seek
+- **Add video** — paste a YouTube URL or ID to add a video as admin
+- **Current queue** — reorder or remove any video
+- **Ticker message** — set the scrolling text shown below the video on the projector
+- **Statistics** — queue length, plays today, total plays, most-requested videos
+
+### History
+Full play history with timestamps. Can be cleared from here.
+
+### Users
+Manage admin accounts — add or remove users with username/password. The first login uses the `ADMIN_PASSWORD` from your environment until you create a named user.
+
+### Settings
+Customise the look and feel of the site for your event:
+- **Event / Site Title** — sets the name shown in the browser tab and topbar on all pages (e.g. "Friday Night Party")
+- **Accent Color** — choose from 7 preset colors or pick a custom color. The selection applies live and is saved to the database so all pages (user, queue, projector) pick it up automatically.
 
 ---
 
@@ -93,6 +138,7 @@ Then on another server you only need `docker-compose.yml` — swap `build: .` fo
    ```
 4. Open `setup.php` in your browser to create the tables
 5. Delete `setup.php` after setup
+6. Make sure your web server is configured with HTTPS
 
 ---
 
@@ -106,9 +152,9 @@ Then on another server you only need `docker-compose.yml` — swap `build: .` fo
 | `DB_USER` | `vquser` | Database user |
 | `DB_PASS` | `changeme` | Database password |
 | `ADMIN_PASSWORD` | `changeme` | Fallback admin password (used before DB users are set up) |
-| `YT_API_KEY` | _(empty)_ | YouTube Data API v3 key |
-| `MAX_PER_IP` | `3` | Max videos one IP can queue at once |
-| `COOLDOWN_SECONDS` | `1800` | Seconds before same video can be re-queued |
+| `YT_API_KEY` | _(empty)_ | YouTube Data API v3 key — enables keyword search |
+| `MAX_PER_IP` | `3` | Max videos one session can queue at once |
+| `COOLDOWN_SECONDS` | `1800` | Seconds before the same video can be re-queued (0 = off) |
 | `ALLOWED_ORIGIN` | _(empty)_ | CORS restriction (empty = allow all) |
 
 ---
@@ -118,7 +164,8 @@ Then on another server you only need `docker-compose.yml` — swap `build: .` fo
 ```
 ├── index.html              User page — search & add videos
 ├── projector.html          Fullscreen projector display
-├── admin.html              Admin panel
+├── admin.html              Admin panel (tabs: Controls, History, Users, Settings)
+├── queue.html              Read-only queue overview
 ├── api.php                 PHP backend API
 ├── config.php              Reads config from environment variables
 ├── setup.php               One-time DB setup (not needed with Docker)
